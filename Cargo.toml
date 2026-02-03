@@ -1,0 +1,12 @@
+[package]
+name = "tomldir"
+version = "0.1.0"
+edition = "2021"
+description = "A lean, thread-safe TOML configuration loader focused on maps and flattening"
+license = "MIT"
+repository = "https://github.com/shree/tomldir"
+
+[dependencies]
+toml = { version = "0.8", default-features = false, features = ["parse", "display", "preserve_order"] }
+thiserror = "1.0"
+indexmap = "2.0"
