@@ -1,6 +1,7 @@
-use tomldir::{Config, Value};
+use std::collections::BTreeMap;
+
 use indexmap::IndexMap;
-use std::collections::{BTreeMap, HashMap};
+use tomldir::{Config, Value};
 
 #[test]
 fn test_basic_load() {
@@ -70,17 +71,17 @@ fn test_flatten_export() {
 
 #[test]
 fn test_indexmap_store_ordering() {
-    // IndexMap preserves insertion order. 
+    // IndexMap preserves insertion order.
     let toml = r#"
         z = 1
         a = 2
         c = 3
         b = 4
     "#;
-    
+
     // Explicitly load into IndexMap
     let cfg = Config::from_str_with_store::<IndexMap<String, Value>>(toml).unwrap();
-    
+
     // Verify order
     let keys: Vec<_> = cfg.store().iter().map(|(k, _)| k.as_str()).collect();
     assert_eq!(keys, vec!["z", "a", "c", "b"]);
@@ -100,7 +101,7 @@ fn test_flatten_generic_return() {
     // Note: ordering depends on the underlying store (HashMap)
     assert!(flat_vec.contains(&("app.id".to_string(), "1".to_string())));
     assert!(flat_vec.contains(&("app.name".to_string(), "test".to_string())));
-    
+
     // Flatten to BTreeMap (sorted keys)
     let flat_btree: BTreeMap<String, String> = cfg.flatten_into();
     let keys: Vec<_> = flat_btree.keys().map(|s| s.as_str()).collect();
@@ -112,7 +113,7 @@ fn test_shared_semantics() {
     let toml = "val = 1";
     let cfg = Config::from_str(toml).unwrap();
     let shared = cfg.shared();
-    
+
     assert_eq!(cfg.get_int("val"), Some(1));
     assert_eq!(shared.get_int("val"), Some(1));
 }

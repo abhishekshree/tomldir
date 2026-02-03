@@ -1,7 +1,5 @@
 # tomldir
 
-### A lean, thread-safe TOML configuration loader focused on maps and flattening
-
 **tomldir** is a small, opinionated Rust crate for loading TOML configuration files into **map-based data structures**, optimized for runtime access, flattening, and configuration composition.
 
 ## Usage

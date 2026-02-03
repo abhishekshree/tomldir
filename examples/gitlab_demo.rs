@@ -3,8 +3,9 @@ use tomldir::Config;
 fn main() -> tomldir::Result<()> {
     println!("--- Loading GitLab Runner Config ---");
     // In a real app you'd use Config::from_file("examples/example.toml")
-    // But for `cargo run --example` the CWD varies, so we'll include bytes for stability or just assume CWD.
-    // Let's assume CWD is project root as per usual `cargo run`.
+    // But for `cargo run --example` the CWD varies, so we'll include bytes for
+    // stability or just assume CWD. Let's assume CWD is project root as per
+    // usual `cargo run`.
     let cfg = Config::from_file("examples/example.toml")?;
 
     // Access generic properties
@@ -15,10 +16,10 @@ fn main() -> tomldir::Result<()> {
     println!("\n--- Exploring Flattened Keys ---");
     // Flatten to HashMap to easily inspect keys
     let flat = cfg.flatten();
-    
+
     // We can iterate over the keys to find runners.
     // Since we know the structure, let's look for specific runners.
-    
+
     // 1. Shell Runner (first one)
     println!("\n[Runner 0: Shell]");
     println!("Name: {}", flat.get("runners[0].name").unwrap());

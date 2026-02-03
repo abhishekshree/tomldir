@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::path::Path;
-use std::fs;
-use crate::store::Store;
-use crate::error::Result;
+use std::{collections::HashMap, fs, path::Path, sync::Arc};
+
 use toml::Value;
+
+use crate::{error::Result, store::Store};
 
 macro_rules! impl_getters {
     ($( $name:ident => $ret:ty, $method:ident, $doc:literal );* $(;)?) => {
@@ -31,7 +29,9 @@ impl Config {
         Self::from_file_with_store::<P, HashMap<String, Value>>(path)
     }
 
-    /// Loads configuration from a TOML string using the default `HashMap` store.
+    /// Loads configuration from a TOML string using the default `HashMap`
+    /// store.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(content: &str) -> Result<Self> {
         Self::from_str_with_store::<HashMap<String, Value>>(content)
     }
@@ -64,6 +64,7 @@ impl Config {
     /// Returns a new instance sharing the same underlying store.
     ///
     /// This is an explicit, cheap clone of the internal `Arc`.
+    #[must_use] 
     pub fn shared(&self) -> Self {
         Self {
             store: Arc::clone(&self.store),
@@ -71,11 +72,13 @@ impl Config {
     }
 
     /// Helper to get a reference to the inner store.
+    #[must_use] 
     pub fn store(&self) -> &dyn Store {
         &*self.store
     }
 
     /// Generic retrieval of a Value by key.
+    #[must_use] 
     pub fn get(&self, key: &str) -> Option<&Value> {
         self.store.get(key)
     }
@@ -87,17 +90,21 @@ impl Config {
         get_bool => bool, as_bool, "Helper to get a boolean value.";
     }
 
-    /// Returns a flattened copy of the configuration as a `HashMap<String, String>`.
+    /// Returns a flattened copy of the configuration as a `HashMap<String,
+    /// String>`.
     ///
     /// All values are converted to strings.
+    #[must_use] 
     pub fn flatten(&self) -> HashMap<String, String> {
         self.flatten_into()
     }
 
-    /// Returns a flattened collection of the configuration, where all values are converted to strings.
+    /// Returns a flattened collection of the configuration, where all values
+    /// are converted to strings.
     ///
     /// The return type `C` must implement `FromIterator<(String, String)>`.
-    /// This allows you to collect into `HashMap`, `BTreeMap`, `IndexMap`, or `Vec`.
+    /// This allows you to collect into `HashMap`, `BTreeMap`, `IndexMap`, or
+    /// `Vec`.
     ///
     /// # Example
     /// ```rust
@@ -106,6 +113,7 @@ impl Config {
     /// # let cfg = Config::from_str("key = 'val'").unwrap();
     /// let map: BTreeMap<String, String> = cfg.flatten_into();
     /// ```
+    #[must_use] 
     pub fn flatten_into<C>(&self) -> C
     where
         C: FromIterator<(String, String)>,
@@ -116,11 +124,10 @@ impl Config {
                 // toml::Value defaults to double quoting strings in to_string() (JSON style).
                 // If it's a string, we want the raw string content for "flattening".
                 // Otherwise use the default Display repr.
-                let s = if let Some(str_val) = v.as_str() {
-                    str_val.to_string()
-                } else {
-                    v.to_string()
-                };
+                let s = v.as_str().map_or_else(
+                    || v.to_string(),
+                    |str_val| str_val.to_string(),
+                );
                 (k.clone(), s)
             })
             .collect()
@@ -135,18 +142,18 @@ fn flatten_value<S: Store + ?Sized>(store: &mut S, prefix: &str, value: Value) {
                 let new_key = if prefix.is_empty() {
                     k
                 } else {
-                    format!("{}.{}", prefix, k)
+                    format!("{prefix}.{k}")
                 };
                 flatten_value(store, &new_key, v);
             }
         }
         Value::Array(a) => {
             // Check if array contains tables. If so, flatten with indices.
-            let is_table_array = a.first().map_or(false, |v| v.is_table());
-            
+            let is_table_array = a.first().is_some_and(toml::Value::is_table);
+
             if is_table_array {
-                 for (i, v) in a.into_iter().enumerate() {
-                    let new_key = format!("{}[{}]", prefix, i);
+                for (i, v) in a.into_iter().enumerate() {
+                    let new_key = format!("{prefix}[{i}]");
                     flatten_value(store, &new_key, v);
                 }
             } else {
