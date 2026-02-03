@@ -1,5 +1,10 @@
 # tomldir
 
+[![Crates.io](https://img.shields.io/crates/v/tomldir.svg)](https://crates.io/crates/tomldir)
+[![Docs](https://docs.rs/tomldir/badge.svg)](https://docs.rs/tomldir)
+[![CI](https://github.com/abhishekshree/tomldir/actions/workflows/ci.yml/badge.svg)](https://github.com/abhishekshree/tomldir/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **tomldir** is a small, opinionated Rust crate for loading TOML configuration files into **map-based data structures**, optimized for runtime access, flattening, and configuration composition.
 
 ## Usage
