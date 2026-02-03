@@ -64,7 +64,7 @@ impl Config {
     /// Returns a new instance sharing the same underlying store.
     ///
     /// This is an explicit, cheap clone of the internal `Arc`.
-    #[must_use] 
+    #[must_use]
     pub fn shared(&self) -> Self {
         Self {
             store: Arc::clone(&self.store),
@@ -72,13 +72,13 @@ impl Config {
     }
 
     /// Helper to get a reference to the inner store.
-    #[must_use] 
+    #[must_use]
     pub fn store(&self) -> &dyn Store {
         &*self.store
     }
 
     /// Generic retrieval of a Value by key.
-    #[must_use] 
+    #[must_use]
     pub fn get(&self, key: &str) -> Option<&Value> {
         self.store.get(key)
     }
@@ -94,7 +94,7 @@ impl Config {
     /// String>`.
     ///
     /// All values are converted to strings.
-    #[must_use] 
+    #[must_use]
     pub fn flatten(&self) -> HashMap<String, String> {
         self.flatten_into()
     }
@@ -113,7 +113,7 @@ impl Config {
     /// # let cfg = Config::from_str("key = 'val'").unwrap();
     /// let map: BTreeMap<String, String> = cfg.flatten_into();
     /// ```
-    #[must_use] 
+    #[must_use]
     pub fn flatten_into<C>(&self) -> C
     where
         C: FromIterator<(String, String)>,
@@ -124,10 +124,9 @@ impl Config {
                 // toml::Value defaults to double quoting strings in to_string() (JSON style).
                 // If it's a string, we want the raw string content for "flattening".
                 // Otherwise use the default Display repr.
-                let s = v.as_str().map_or_else(
-                    || v.to_string(),
-                    |str_val| str_val.to_string(),
-                );
+                let s = v
+                    .as_str()
+                    .map_or_else(|| v.to_string(), |str_val| str_val.to_string());
                 (k.clone(), s)
             })
             .collect()
