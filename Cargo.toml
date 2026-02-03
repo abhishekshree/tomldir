@@ -1,6 +1,6 @@
 [package]
 name = "tomldir"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "A lean, thread-safe TOML configuration loader focused on maps and flattening"
 license = "MIT"
@@ -9,6 +9,10 @@ readme = "README.md"
 keywords = ["toml", "config", "configuration", "flatten", "map"]
 categories = ["config", "parsing", "data-structures"]
 authors = ["Abhishek Shree <abhishek.shree@outlook.com>"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 toml = { version = "0.8", default-features = false, features = ["parse", "display", "preserve_order"] }
