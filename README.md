@@ -31,7 +31,7 @@ fn main() -> tomldir::Result<()> {
     "#;
 
     // Load into default HashMap
-    let cfg = Config::from_str(toml_data)?;
+    let cfg = Config::from_toml(toml_data)?;
     
     // Thread-safe access (explicit cheap clone)
     let cfg = cfg.shared(); 
@@ -56,7 +56,7 @@ fn main() -> tomldir::Result<()> {
     "#;
 
     // Specify storage type explicitly
-    let cfg = Config::<IndexMap<String, Value>>::from_str_with(toml_data)?;
+    let cfg = Config::<IndexMap<String, Value>>::from_toml_with(toml_data)?;
 
     let keys: Vec<_> = cfg.flatten_into::<Vec<(String, String)>>()
         .into_iter()

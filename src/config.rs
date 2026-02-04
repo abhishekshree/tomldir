@@ -60,8 +60,8 @@ impl Config {
     ///
     /// # Errors
     /// Returns an error if the string contains invalid TOML.
-    pub fn from_str(content: &str) -> Result<Self> {
-        Self::from_str_with(content)
+    pub fn from_toml(content: &str) -> Result<Self> {
+        Self::from_toml_with(content)
     }
 }
 
@@ -88,14 +88,14 @@ where
     /// Returns an error if the file cannot be read or contains invalid TOML.
     pub fn from_file_with<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content = fs::read_to_string(path)?;
-        Self::from_str_with(&content)
+        Self::from_toml_with(&content)
     }
 
     /// Load configuration from a TOML string using a custom store.
     ///
     /// # Errors
     /// Returns an error if the string contains invalid TOML.
-    pub fn from_str_with(content: &str) -> Result<Self> {
+    pub fn from_toml_with(content: &str) -> Result<Self> {
         let root: Value = toml::from_str(content)?;
 
         let mut store = S::default();

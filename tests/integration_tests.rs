@@ -14,7 +14,7 @@ fn test_basic_load() {
         enabled = true
         ratio = 1.5
     "#;
-    let cfg = Config::from_str(toml).unwrap();
+    let cfg = Config::from_toml(toml).unwrap();
     assert_eq!(cfg.get_string("title").unwrap(), "Test");
     assert_eq!(cfg.get_int("count").unwrap(), 10);
     assert!(cfg.get_bool("enabled").unwrap());
@@ -29,7 +29,7 @@ fn test_nested_table_flattening() {
         [server.auth]
         method = "token"
     "#;
-    let cfg = Config::from_str(toml).unwrap();
+    let cfg = Config::from_toml(toml).unwrap();
     assert_eq!(cfg.get_string("server.host").unwrap(), "localhost");
     assert_eq!(cfg.get_string("server.auth.method").unwrap(), "token");
 }
@@ -42,7 +42,7 @@ fn test_array_of_tables_flattening() {
         [[users]]
         name = "Bob"
     "#;
-    let cfg = Config::from_str(toml).unwrap();
+    let cfg = Config::from_toml(toml).unwrap();
     assert_eq!(cfg.get_string("users[0].name").unwrap(), "Alice");
     assert_eq!(cfg.get_string("users[1].name").unwrap(), "Bob");
 }
@@ -52,7 +52,7 @@ fn test_primitive_arrays() {
     let toml = r"
         ports = [80, 443]
     ";
-    let cfg = Config::from_str(toml).unwrap();
+    let cfg = Config::from_toml(toml).unwrap();
     let val = cfg.get("ports").unwrap();
     // With toml::Value, checking type is via type_str()
     assert_eq!(val.type_str(), "array");
@@ -66,7 +66,7 @@ fn test_flatten_export() {
         debug = true
         rate = 5.5
     ";
-    let cfg = Config::from_str(toml).unwrap();
+    let cfg = Config::from_toml(toml).unwrap();
     let flat: HashMap<String, String> = cfg.flatten_into();
     assert_eq!(flat.get("app.debug"), Some(&"true".to_string()));
     assert_eq!(flat.get("app.rate"), Some(&"5.5".to_string()));
@@ -84,7 +84,7 @@ fn test_indexmap_store_ordering() {
     "#;
 
     // Explicitly load into IndexMap
-    let cfg = Config::<IndexMap<String, Value>>::from_str_with(toml).unwrap();
+    let cfg = Config::<IndexMap<String, Value>>::from_toml_with(toml).unwrap();
 
     // Verify order by checking insertion sequence via flatten
     let flat: Vec<(String, String)> = cfg.flatten_into();
@@ -99,7 +99,7 @@ fn test_flatten_generic_return() {
         id = 1
         name = "test"
     "#;
-    let cfg = Config::from_str(toml).unwrap();
+    let cfg = Config::from_toml(toml).unwrap();
 
     let flat_vec: Vec<(String, String)> = cfg.flatten_into();
     assert_eq!(flat_vec.len(), 2);
@@ -116,7 +116,7 @@ fn test_flatten_generic_return() {
 #[test]
 fn test_shared_semantics() {
     let toml = "val = 1";
-    let cfg = Config::from_str(toml).unwrap();
+    let cfg = Config::from_toml(toml).unwrap();
     let shared = cfg.shared();
 
     assert_eq!(cfg.get_int("val"), Some(1));
