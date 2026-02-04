@@ -1,61 +1,90 @@
 use std::collections::{BTreeMap, HashMap};
 
+#[cfg(feature = "preserve_order")]
 use indexmap::IndexMap;
 use toml::Value;
 
-/// Trait for the underlying configuration storage.
+/// Default backing store used by `Config`.
 ///
-/// Allows swapping between `HashMap`, `BTreeMap`, `IndexMap`, or custom
-/// implementations.
-pub trait Store: Send + Sync {
-    /// Inserts a key-value pair into the store.
+/// Chosen for:
+/// - Fast lookups (O(1) expected)
+/// - DoS-resistant hashing (`RandomState`)
+/// - Familiar behavior for most users
+pub type DefaultStore = HashMap<String, Value>;
+
+/// Internal helper trait for map-like storage.
+///
+/// This trait is intentionally **minimal**:
+/// - No ownership tricks
+/// - No iterator boxing
+/// - No dynamic dispatch
+///
+/// It exists solely to let `Config<S>` work with different
+/// map implementations *without* leaking complexity into the public API.
+pub trait Store: Default + Send + Sync + 'static {
+    type Iter<'a>: Iterator<Item = (&'a String, &'a Value)>
+    where
+        Self: 'a;
+
     fn insert(&mut self, key: String, value: Value);
-
-    /// Retrieves a value by key.
     fn get(&self, key: &str) -> Option<&Value>;
-
-    /// Returns an iterator over the store's entries.
-    fn iter(&self) -> Box<dyn Iterator<Item = (&String, &Value)> + '_>;
+    fn iter(&self) -> Self::Iter<'_>;
 }
 
-impl<S: std::hash::BuildHasher + Send + Sync> Store for HashMap<String, Value, S> {
+/* ---------------- HashMap ---------------- */
+
+impl<S> Store for HashMap<String, Value, S>
+where
+    S: std::hash::BuildHasher + Default + Send + Sync + 'static,
+{
+    type Iter<'a> = std::collections::hash_map::Iter<'a, String, Value>;
+
     fn insert(&mut self, key: String, value: Value) {
-        self.insert(key, value);
+        HashMap::insert(self, key, value);
     }
 
     fn get(&self, key: &str) -> Option<&Value> {
-        self.get(key)
+        HashMap::get(self, key)
     }
 
-    fn iter(&self) -> Box<dyn Iterator<Item = (&String, &Value)> + '_> {
-        Box::new(self.iter())
+    fn iter(&self) -> Self::Iter<'_> {
+        HashMap::iter(self)
     }
 }
+
+/* ---------------- BTreeMap ---------------- */
 
 impl Store for BTreeMap<String, Value> {
+    type Iter<'a> = std::collections::btree_map::Iter<'a, String, Value>;
+
     fn insert(&mut self, key: String, value: Value) {
-        self.insert(key, value);
+        BTreeMap::insert(self, key, value);
     }
 
     fn get(&self, key: &str) -> Option<&Value> {
-        self.get(key)
+        BTreeMap::get(self, key)
     }
 
-    fn iter(&self) -> Box<dyn Iterator<Item = (&String, &Value)> + '_> {
-        Box::new(self.iter())
+    fn iter(&self) -> Self::Iter<'_> {
+        BTreeMap::iter(self)
     }
 }
 
+/* ---------------- IndexMap ---------------- */
+
+#[cfg(feature = "preserve_order")]
 impl Store for IndexMap<String, Value> {
+    type Iter<'a> = indexmap::map::Iter<'a, String, Value>;
+
     fn insert(&mut self, key: String, value: Value) {
-        self.insert(key, value);
+        IndexMap::insert(self, key, value);
     }
 
     fn get(&self, key: &str) -> Option<&Value> {
-        self.get(key)
+        IndexMap::get(self, key)
     }
 
-    fn iter(&self) -> Box<dyn Iterator<Item = (&String, &Value)> + '_> {
-        Box::new(self.iter())
+    fn iter(&self) -> Self::Iter<'_> {
+        IndexMap::iter(self)
     }
 }

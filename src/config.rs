@@ -1,13 +1,76 @@
-use std::{collections::HashMap, fs, path::Path, sync::Arc};
+use std::{fs, path::Path, sync::Arc};
 
 use toml::Value;
 
-use crate::{error::Result, store::Store};
+use crate::{
+    error::Result,
+    store::{DefaultStore, Store},
+};
 
+/// Thread-safe, immutable configuration container.
+///
+/// ## Design notes
+///
+/// - Configuration is **parsed once** and then treated as read-only.
+/// - Internally, values are **flattened** into dot-separated keys:
+///   `database.host`, `runners[0].name`, etc.
+/// - The backing store is wrapped in an `Arc` to make cloning cheap and sharing
+///   across threads trivial.
+///
+/// ```rust
+/// use tomldir::Config;
+/// # use std::fs;
+/// # let _ = fs::write("config.toml", "title = 'Test'");
+/// let cfg = Config::from_file("config.toml").unwrap();
+/// # fs::remove_file("config.toml").unwrap();
+/// ```
+///
+/// You can also use a custom store like:
+///
+/// ```rust
+/// use std::collections::HashMap;
+///
+/// use rustc_hash::FxBuildHasher;
+/// use tomldir::{Config, Value};
+///
+/// let cfg = Config::<HashMap<String, Value, FxBuildHasher>>::from_file_with("config.toml");
+/// ```
+pub struct Config<S = DefaultStore> {
+    store: Arc<S>,
+}
+
+impl<S> Clone for Config<S> {
+    fn clone(&self) -> Self {
+        Self {
+            store: Arc::clone(&self.store),
+        }
+    }
+}
+
+impl Config {
+    /// Load configuration from a TOML file using the default store.
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read or contains invalid TOML.
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        Self::from_file_with(path)
+    }
+
+    /// Load configuration from a TOML string using the default store.
+    ///
+    /// # Errors
+    /// Returns an error if the string contains invalid TOML.
+    pub fn from_str(content: &str) -> Result<Self> {
+        Self::from_str_with(content)
+    }
+}
+
+// This is me having fun with macros
 macro_rules! impl_getters {
     ($( $name:ident => $ret:ty, $method:ident, $doc:literal );* $(;)?) => {
         $(
             #[doc = $doc]
+            #[must_use]
             pub fn $name(&self, key: &str) -> Option<$ret> {
                 self.get(key).and_then(Value::$method)
             }
@@ -15,69 +78,41 @@ macro_rules! impl_getters {
     };
 }
 
-/// Thread-safe configuration container.
-///
-/// Wraps an `Arc<dyn Store>` to allow cheap cloning and thread transfers.
-#[derive(Clone)]
-pub struct Config {
-    store: Arc<dyn Store>,
-}
-
-impl Config {
-    /// Loads configuration from a file/path using the default `HashMap` store.
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        Self::from_file_with_store::<P, HashMap<String, Value>>(path)
-    }
-
-    /// Loads configuration from a TOML string using the default `HashMap`
-    /// store.
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_str(content: &str) -> Result<Self> {
-        Self::from_str_with_store::<HashMap<String, Value>>(content)
-    }
-
-    /// Loads configuration from a file into a specific Store type.
+impl<S> Config<S>
+where
+    S: Store,
+{
+    /// Load configuration from a TOML file using a custom store.
     ///
-    /// Useful if you want ordered keys (via `IndexMap` or `BTreeMap`).
-    pub fn from_file_with_store<P, S>(path: P) -> Result<Self>
-    where
-        P: AsRef<Path>,
-        S: Store + Default + 'static,
-    {
+    /// # Errors
+    /// Returns an error if the file cannot be read or contains invalid TOML.
+    pub fn from_file_with<P: AsRef<Path>>(path: P) -> Result<Self> {
         let content = fs::read_to_string(path)?;
-        Self::from_str_with_store::<S>(&content)
+        Self::from_str_with(&content)
     }
 
-    /// Loads configuration from a string into a specific Store type.
-    pub fn from_str_with_store<S>(content: &str) -> Result<Self>
-    where
-        S: Store + Default + 'static,
-    {
+    /// Load configuration from a TOML string using a custom store.
+    ///
+    /// # Errors
+    /// Returns an error if the string contains invalid TOML.
+    pub fn from_str_with(content: &str) -> Result<Self> {
         let root: Value = toml::from_str(content)?;
+
         let mut store = S::default();
         flatten_value(&mut store, "", root);
+
         Ok(Self {
             store: Arc::new(store),
         })
     }
 
     /// Returns a new instance sharing the same underlying store.
-    ///
-    /// This is an explicit, cheap clone of the internal `Arc`.
     #[must_use]
     pub fn shared(&self) -> Self {
-        Self {
-            store: Arc::clone(&self.store),
-        }
+        self.clone()
     }
 
-    /// Helper to get a reference to the inner store.
-    #[must_use]
-    pub fn store(&self) -> &dyn Store {
-        &*self.store
-    }
-
-    /// Generic retrieval of a Value by key.
+    /// Retrieve a raw TOML value by flattened key.
     #[must_use]
     pub fn get(&self, key: &str) -> Option<&Value> {
         self.store.get(key)
@@ -90,82 +125,65 @@ impl Config {
         get_bool => bool, as_bool, "Helper to get a boolean value.";
     }
 
-    /// Returns a flattened copy of the configuration as a `HashMap<String,
-    /// String>`.
+    /// Flatten all values into string form.
     ///
-    /// All values are converted to strings.
-    #[must_use]
-    pub fn flatten(&self) -> HashMap<String, String> {
-        self.flatten_into()
+    /// Strings preserve their raw content.
+    /// Non-strings use TOML's display representation.
+    pub fn flatten(&self) -> impl Iterator<Item = (String, String)> + '_ {
+        self.store.iter().map(|(k, v)| {
+            let value = v
+                .as_str()
+                .map_or_else(|| v.to_string(), ToString::to_string);
+            (k.clone(), value)
+        })
     }
 
     /// Returns a flattened collection of the configuration, where all values
     /// are converted to strings.
     ///
     /// The return type `C` must implement `FromIterator<(String, String)>`.
-    /// This allows you to collect into `HashMap`, `BTreeMap`, `IndexMap`, or
-    /// `Vec`.
-    ///
-    /// # Example
-    /// ```rust
-    /// use std::collections::BTreeMap;
-    /// # use tomldir::Config;
-    /// # let cfg = Config::from_str("key = 'val'").unwrap();
-    /// let map: BTreeMap<String, String> = cfg.flatten_into();
-    /// ```
     #[must_use]
     pub fn flatten_into<C>(&self) -> C
     where
         C: FromIterator<(String, String)>,
     {
-        self.store
-            .iter()
-            .map(|(k, v)| {
-                // toml::Value defaults to double quoting strings in to_string() (JSON style).
-                // If it's a string, we want the raw string content for "flattening".
-                // Otherwise use the default Display repr.
-                let s = v
-                    .as_str()
-                    .map_or_else(|| v.to_string(), |str_val| str_val.to_string());
-                (k.clone(), s)
-            })
-            .collect()
+        self.flatten().collect()
     }
 }
 
-/// Recursive helper to flatten the TOML tree into the store.
-fn flatten_value<S: Store + ?Sized>(store: &mut S, prefix: &str, value: Value) {
+/// Recursively flatten a TOML value into dot-separated keys like:
+///
+/// - `{ a = { b = 1 } }` → `a.b = 1`
+/// - `{ a = [ { x = 1 } ] }` → `a[0].x = 1`
+fn flatten_value<S: Store>(store: &mut S, prefix: &str, value: Value) {
     match value {
-        Value::Table(t) => {
-            for (k, v) in t {
-                let new_key = if prefix.is_empty() {
+        Value::Table(table) => {
+            for (k, v) in table {
+                let key = if prefix.is_empty() {
                     k
                 } else {
                     format!("{prefix}.{k}")
                 };
-                flatten_value(store, &new_key, v);
+                flatten_value(store, &key, v);
             }
         }
-        Value::Array(a) => {
-            // Check if array contains tables. If so, flatten with indices.
-            let is_table_array = a.first().is_some_and(toml::Value::is_table);
+
+        Value::Array(array) => {
+            let is_table_array = array.first().is_some_and(Value::is_table);
 
             if is_table_array {
-                for (i, v) in a.into_iter().enumerate() {
-                    let new_key = format!("{prefix}[{i}]");
-                    flatten_value(store, &new_key, v);
+                for (i, v) in array.into_iter().enumerate() {
+                    let key = format!("{prefix}[{i}]");
+                    flatten_value(store, &key, v);
                 }
-            } else {
-                // Primitive array, keep as Value::Array
-                if !prefix.is_empty() {
-                    store.insert(prefix.to_string(), Value::Array(a));
-                }
+            } else if !prefix.is_empty() {
+                store.insert(prefix.to_string(), Value::Array(array));
             }
         }
-        _ => {
-            // Primitive (String, Int, Float, Bool, Datetime)
+
+        other => {
             if !prefix.is_empty() {
-                store.insert(prefix.to_string(), value);
+                store.insert(prefix.to_string(), other);
             }
         }
     }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use tomldir::Config;
 
 fn main() -> tomldir::Result<()> {
@@ -10,12 +12,12 @@ fn main() -> tomldir::Result<()> {
 
     // Access generic properties
     if let Some(concurrent) = cfg.get_int("concurrent") {
-        println!("Global concurrency limit: {}", concurrent);
+        println!("Global concurrency limit: {concurrent}");
     }
 
     println!("\n--- Exploring Flattened Keys ---");
     // Flatten to HashMap to easily inspect keys
-    let flat = cfg.flatten();
+    let flat: HashMap<String, String> = cfg.flatten_into();
 
     // We can iterate over the keys to find runners.
     // Since we know the structure, let's look for specific runners.

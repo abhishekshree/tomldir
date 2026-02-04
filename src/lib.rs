@@ -4,5 +4,5 @@ mod store;
 
 pub use config::Config;
 pub use error::{Error, Result};
-pub use store::Store;
+pub use store::{DefaultStore, Store};
 pub use toml::Value;

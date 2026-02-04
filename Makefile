@@ -28,10 +28,14 @@ example:
 release:
 	$(CARGO) publish --dry-run
 
+doc:
+	$(CARGO) doc --no-deps --open
+
 help:
 	@echo "Available targets:"
 	@echo "  all       - Run fmt, lint, and test (default)"
 	@echo "  build     - Build the project"
+	@echo "  doc       - Generate and open documentation"
 	@echo "  test      - Run tests"
 	@echo "  lint      - Run clippy with strict settings"
 	@echo "  fmt       - Format code using rustfmt"

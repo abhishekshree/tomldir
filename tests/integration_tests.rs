@@ -1,7 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
+#[cfg(feature = "preserve_order")]
 use indexmap::IndexMap;
-use tomldir::{Config, Value};
+use tomldir::Config;
+#[cfg(feature = "preserve_order")]
+use tomldir::Value;
 
 #[test]
 fn test_basic_load() {
@@ -46,9 +49,9 @@ fn test_array_of_tables_flattening() {
 
 #[test]
 fn test_primitive_arrays() {
-    let toml = r#"
+    let toml = r"
         ports = [80, 443]
-    "#;
+    ";
     let cfg = Config::from_str(toml).unwrap();
     let val = cfg.get("ports").unwrap();
     // With toml::Value, checking type is via type_str()
@@ -58,17 +61,18 @@ fn test_primitive_arrays() {
 
 #[test]
 fn test_flatten_export() {
-    let toml = r#"
+    let toml = r"
         [app]
         debug = true
         rate = 5.5
-    "#;
+    ";
     let cfg = Config::from_str(toml).unwrap();
-    let flat = cfg.flatten();
+    let flat: HashMap<String, String> = cfg.flatten_into();
     assert_eq!(flat.get("app.debug"), Some(&"true".to_string()));
     assert_eq!(flat.get("app.rate"), Some(&"5.5".to_string()));
 }
 
+#[cfg(feature = "preserve_order")]
 #[test]
 fn test_indexmap_store_ordering() {
     // IndexMap preserves insertion order.
@@ -80,10 +84,11 @@ fn test_indexmap_store_ordering() {
     "#;
 
     // Explicitly load into IndexMap
-    let cfg = Config::from_str_with_store::<IndexMap<String, Value>>(toml).unwrap();
+    let cfg = Config::<IndexMap<String, Value>>::from_str_with(toml).unwrap();
 
-    // Verify order
-    let keys: Vec<_> = cfg.store().iter().map(|(k, _)| k.as_str()).collect();
+    // Verify order by checking insertion sequence via flatten
+    let flat: Vec<(String, String)> = cfg.flatten_into();
+    let keys: Vec<_> = flat.iter().map(|(k, _)| k.as_str()).collect();
     assert_eq!(keys, vec!["z", "a", "c", "b"]);
 }
 
@@ -104,7 +109,7 @@ fn test_flatten_generic_return() {
 
     // Flatten to BTreeMap (sorted keys)
     let flat_btree: BTreeMap<String, String> = cfg.flatten_into();
-    let keys: Vec<_> = flat_btree.keys().map(|s| s.as_str()).collect();
+    let keys: Vec<_> = flat_btree.keys().map(String::as_str).collect();
     assert_eq!(keys, vec!["app.id", "app.name"]);
 }
 
@@ -116,11 +121,4 @@ fn test_shared_semantics() {
 
     assert_eq!(cfg.get_int("val"), Some(1));
     assert_eq!(shared.get_int("val"), Some(1));
-}
-
-#[test]
-fn test_default_storage_is_hashmap() {
-    let toml = "val = 1";
-    let cfg = Config::from_str(toml).unwrap();
-    assert_eq!(cfg.get_int("val"), Some(1));
 }

@@ -56,21 +56,30 @@ fn main() -> tomldir::Result<()> {
     "#;
 
     // Specify storage type explicitly
-    let cfg = Config::from_str_with_store::<IndexMap<String, Value>>(toml_data)?;
+    let cfg = Config::<IndexMap<String, Value>>::from_str_with(toml_data)?;
 
-    let keys: Vec<_> = cfg.store().iter().map(|(k, _)| k.as_str()).collect();
+    let keys: Vec<_> = cfg.flatten_into::<Vec<(String, String)>>()
+        .into_iter()
+        .map(|(k, _)| k)
+        .collect();
     assert_eq!(keys, vec!["first", "second"]);
     
     Ok(())
 }
 ```
 
-### Flattening
-
-You can flatten the config into a simple `HashMap<String, String>`:
+You can get an iterator over all flattened key-value pairs as strings:
 
 ```rust
-let flat = cfg.flatten();
+for (key, value) in cfg.flatten() {
+    println!("{key} = {value}");
+}
+```
+
+Or collect them into a specific map (like `HashMap<String, String>`) using `flatten_into()`:
+
+```rust
+let flat: HashMap<String, String> = cfg.flatten_into();
 ```
 
 Or flatten into any custom type using `flatten_into()`:
