@@ -20,8 +20,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 preserve_order = ["dep:indexmap", "toml/preserve_order"]
 
 [dependencies]
-toml = { version = "0.8", default-features = false, features = ["parse", "display"] }
-thiserror = "1.0"
+toml = { version = "0.9", default-features = false, features = ["parse", "display", "serde"] }
+thiserror = "2.0.18"
 indexmap = { version = "2.0", optional = true }
 
 [dev-dependencies]
