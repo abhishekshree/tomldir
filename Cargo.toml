@@ -1,6 +1,6 @@
 [package]
 name = "tomldir"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "A lean, thread-safe TOML configuration loader focused on maps and flattening"
 license = "MIT"
