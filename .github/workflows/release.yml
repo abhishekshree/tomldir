@@ -17,25 +17,24 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
       - run: cargo test
 
-  publish-crate:
-    name: Publish to Crates.io
+  create-release:
+    name: Create GitHub Release
     needs: check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-      - name: Publish
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Essential for changelog history
 
-  create-release:
-    name: Create GitHub Release
-    needs: publish-crate
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          body: ${{steps.build_changelog.outputs.changelog}}
           generate_release_notes: true
