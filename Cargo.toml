@@ -26,3 +26,11 @@ indexmap = { version = "2.0", optional = true }
 [dev-dependencies]
 rustc-hash = "2.0"
 
+[package.metadata.release]
+push = true
+sign-commit = false
+tag-name = "v{{version}}"
+tag-message = "Release {{version}}"
+pre-release-commit-message = "chore: release v{{version}}"
+push-remote = "origin"
+
