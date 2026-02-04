@@ -28,14 +28,7 @@ jobs:
         with:
           fetch-depth: 0 # Essential for changelog history
 
-      - name: Build Changelog
-        id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          body: ${{steps.build_changelog.outputs.changelog}}
           generate_release_notes: true
