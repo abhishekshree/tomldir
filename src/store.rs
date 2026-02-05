@@ -5,20 +5,10 @@ use indexmap::IndexMap;
 use toml::Value;
 
 /// Default backing store used by `Config`.
-///
-/// Chosen for:
-/// - Fast lookups (O(1) expected)
-/// - DoS-resistant hashing (`RandomState`)
-/// - Familiar behavior for most users
 pub type DefaultStore = HashMap<String, Value>;
 
 /// Internal helper trait for map-like storage.
-///
-/// This trait is intentionally **minimal**:
-/// - No ownership tricks
-/// - No iterator boxing
-/// - No dynamic dispatch
-///
+
 /// It exists solely to let `Config<S>` work with different
 /// map implementations *without* leaking complexity into the public API.
 pub trait Store: Default + Send + Sync + 'static {
