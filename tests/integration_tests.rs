@@ -122,3 +122,19 @@ fn test_shared_semantics() {
     assert_eq!(cfg.get_int("val"), Some(1));
     assert_eq!(shared.get_int("val"), Some(1));
 }
+
+#[test]
+fn test_flatten_into_vec() {
+    let toml = r#"
+        title = "TOMLDir"
+        [database]
+        port = 5432
+        enabled = true
+    "#;
+    let cfg = Config::from_toml(toml).unwrap();
+    let flat_vec: Vec<(String, String)> = cfg.flatten_into();
+
+    assert!(flat_vec.contains(&("title".into(), "TOMLDir".into())));
+    assert!(flat_vec.contains(&("database.port".into(), "5432".into())));
+    assert!(flat_vec.contains(&("database.enabled".into(), "true".into())));
+}

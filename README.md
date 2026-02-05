@@ -5,7 +5,28 @@
 [![CI](https://github.com/abhishekshree/tomldir/actions/workflows/ci.yml/badge.svg)](https://github.com/abhishekshree/tomldir/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**tomldir** is a small, opinionated Rust crate for loading TOML configuration files into **map-based data structures**, optimized for runtime access, flattening, and configuration composition.
+**tomldir** is a lean crate for loading TOML configs into map-based structures with fast dot-path access, deterministic flattening, and easy composition - ideal for CLIs and runtime-driven configuration.
+
+## Features
+
+- **Runtime-friendly:** Load and query config via string key paths like `"server.port"`.
+- **Flattened output:** Nested tables become dot-separated keys for easy iteration or overlay with env/flags.
+- **Map-first storage:** Uses a `HashMap` by default, but easily swap in `IndexMap` or `BTreeMap`.
+- **Thread-safe:** Designed for use with `Arc` and concurrent access.
+- **Flexible flattening:** Flatten to any supported map or container with `flatten_into()`.
+
+If you’re coming from Go, tomldir offers a [Viper](https://github.com/spf13/viper)-like workflow: load TOML into a map, access values via dot paths, and flatten configs for runtime use.
+
+## Why tomldir?
+
+Use tomldir when you want:
+
+- Runtime access via string paths like `database.host`
+- Easy flattening for CLI flags or environment overlays
+- Flexible configs without rigid structs
+
+tomldir intentionally prioritizes simplicity over strong typing.
+
 
 ## Usage
 
@@ -18,7 +39,7 @@ tomldir = "0.1"
 indexmap = "2.0"
 ```
 
-### Basic Usage
+### Basic: Setting up a runtime config
 
 ```rust
 use tomldir::Config;
@@ -32,11 +53,18 @@ fn main() -> tomldir::Result<()> {
 
     // Load into default HashMap
     let cfg = Config::from_toml(toml_data)?;
+
     
     // Thread-safe access (explicit cheap clone)
     let cfg = cfg.shared(); 
 
     assert_eq!(cfg.get_string("database.host"), Some("localhost"));
+
+    // Or even convert config into env-style keys
+    for (k, v) in cfg.flatten() {
+        println!("APP_{}={}", k.to_uppercase().replace('.', "_"), v);
+    }
+
     Ok(())
 }
 ```
@@ -94,12 +122,14 @@ let flat_sorted: BTreeMap<String, String> = cfg.flatten_into();
 let flat_vec: Vec<(String, String)> = cfg.flatten_into();
 ```
 
-## Features
+## Comparison
 
-* **TOML-only**: Built directly on `toml::Value`.
-* **Map-first**: Stores data as `HashMap` by default, but swapable for `IndexMap` or `BTreeMap`.
-* **Thread-safe**: Designed for `Arc` usage and concurrency.
-* **Deterministic Flattening**: Nested tables become dot-separated keys.
+| Feature | serde + toml | config | tomldir |
+|----------|-------------|---------|-----------|
+| Strong typing | ✅ | ⚠️ | ❌ |
+| Dot-path runtime access | ❌ | ⚠️ | ✅ |
+| Flattening support | ❌ | ⚠️ | ✅ |
+| Minimal boilerplate | ❌ | ⚠️ | ✅ |
 
 ## License
 
