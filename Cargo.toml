@@ -1,6 +1,6 @@
 [package]
 name = "tomldir"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2024"
 rust-version = "1.92"
 description = "Lean TOML loader with runtime dot-path access and flattening into maps, optimized for tools and dynamic configs"
