@@ -8,7 +8,6 @@ use toml::Value;
 pub type DefaultStore = HashMap<String, Value>;
 
 /// Internal helper trait for map-like storage.
-
 /// It exists solely to let `Config<S>` work with different
 /// map implementations *without* leaking complexity into the public API.
 pub trait Store: Default + Send + Sync + 'static {
@@ -20,8 +19,6 @@ pub trait Store: Default + Send + Sync + 'static {
     fn get(&self, key: &str) -> Option<&Value>;
     fn iter(&self) -> Self::Iter<'_>;
 }
-
-/* ---------------- HashMap ---------------- */
 
 impl<S> Store for HashMap<String, Value, S>
 where
@@ -42,8 +39,6 @@ where
     }
 }
 
-/* ---------------- BTreeMap ---------------- */
-
 impl Store for BTreeMap<String, Value> {
     type Iter<'a> = std::collections::btree_map::Iter<'a, String, Value>;
 
@@ -59,8 +54,6 @@ impl Store for BTreeMap<String, Value> {
         BTreeMap::iter(self)
     }
 }
-
-/* ---------------- IndexMap ---------------- */
 
 #[cfg(feature = "preserve_order")]
 impl Store for IndexMap<String, Value> {
