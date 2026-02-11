@@ -20,7 +20,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 preserve_order = ["dep:indexmap", "toml/preserve_order"]
 
 [dependencies]
-toml = { version = "0.9", default-features = false, features = [
+toml = { version = "1.0", default-features = false, features = [
     "parse",
     "display",
     "serde",
